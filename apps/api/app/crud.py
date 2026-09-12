@@ -63,6 +63,7 @@ async def maj_profil(session: AsyncSession, profil: Profil, **champs) -> Profil:
         "ville",
         "niveau",
         "track",
+        "objectif",
         "interets",
         "cv_summary",
         "langue",

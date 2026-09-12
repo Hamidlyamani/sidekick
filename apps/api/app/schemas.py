@@ -21,6 +21,9 @@ class ProfilBase(BaseModel):
     ville: str | None = None
     niveau: str | None = None
     track: Track = Track.inconnu
+    # Texte libre saisi par la personne (« un master au Canada »).
+    # Ne pas confondre avec `track`, qui est une énumération interne.
+    objectif: str | None = None
     interets: list[str] = Field(default_factory=list)
     cv_summary: str | None = None
     langue: str = "fr"
@@ -37,6 +40,7 @@ class ProfilUpdate(BaseModel):
     ville: str | None = None
     niveau: str | None = None
     track: Track | None = None
+    objectif: str | None = None
     interets: list[str] | None = None
     cv_summary: str | None = None
     onboarding_complet: bool | None = None

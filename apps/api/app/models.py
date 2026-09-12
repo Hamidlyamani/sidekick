@@ -112,6 +112,13 @@ class Profil(Base):
     niveau: Mapped[str | None] = mapped_column(String(80), default=None)  # "Bac+2", "Licence 3"
     track: Mapped[Track] = mapped_column(Enum(Track), default=Track.inconnu)
 
+    # `track` est une énumération (academique / professionnel / insertion) :
+    # c'est un aiguillage interne. `objectif` est ce que la personne écrit
+    # elle-même — « un master au Canada », « trouver un stage en data ».
+    # Le formulaire de la landing page demande l'objectif, pas l'aiguillage :
+    # envoyer « un master au Canada » dans `track` fait un 422.
+    objectif: Mapped[str | None] = mapped_column(String(300), default=None)
+
     # Liste, pas une chaîne CSV : l'ERD typait `interets` en string, ce qui
     # t'obligeait à parser à chaque lecture.
     interets: Mapped[list] = mapped_column(JSON, default=list)

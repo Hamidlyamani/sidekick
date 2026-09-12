@@ -11,7 +11,10 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
+import os
+
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import crud
@@ -42,6 +45,32 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="Oriente AI — API", version="0.1.0", lifespan=lifespan)
 
+# ──────────────────────────── CORS ────────────────────────────
+#
+# Sans ça, le frontend Vite (http://localhost:5173) ne peut PAS appeler cette
+# API : le navigateur bloque la requête avant même qu'elle parte, et l'erreur
+# n'apparaît que dans la console — le serveur, lui, ne voit rien.
+#
+# Le bot WhatsApp n'en a pas besoin (Node n'applique pas la politique
+# same-origin), c'est uniquement pour le navigateur.
+#
+# CORS_ORIGINS="http://localhost:5173,http://192.168.1.42:5173" pour surcharger.
+_origines = os.getenv("CORS_ORIGINS")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=(
+        [o.strip() for o in _origines.split(",") if o.strip()]
+        if _origines
+        else [
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:4173",  # vite preview
+        ]
+    ),
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # ──────────────────────────── santé ────────────────────────────
 
@@ -61,9 +90,18 @@ async def health() -> HealthOut:
 async def creer_profil(
     payload: ProfilCreate, session: AsyncSession = Depends(get_session)
 ) -> ProfilOut:
+    """Création depuis la landing page. Idempotent : renvoyer le formulaire
+    avec le même numéro met à jour le profil au lieu d'échouer.
+
+    Cette route enregistrait autrefois uniquement whatsapp_id et nom, et
+    perdait silencieusement ville, objectif, intérêts et CV. Elle persiste
+    maintenant tout ce que le formulaire envoie."""
     profil, _ = await crud.get_or_create_profil(
         session, payload.whatsapp_id, payload.nom
     )
+    champs = payload.model_dump(exclude={"whatsapp_id"}, exclude_unset=True)
+    if champs:
+        profil = await crud.maj_profil(session, profil, **champs)
     return ProfilOut.model_validate(profil)
 
 
